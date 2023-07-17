@@ -136,7 +136,7 @@ elif second_opt:
         if up_check:
             st.info('Initializing Document Uploading to DB...')
             # Upload documents to the Pinecone index
-            time.sleep(30)
+            time.sleep(40)
             vector_store = Pinecone.from_documents(docs, embeddings, index_name=pinecone_index)
             
             # Display success message
