@@ -3,7 +3,8 @@ import os
 import time
 import pinecone
 from langchain.vectorstores import Pinecone
-from langchain.chains.question_answering import load_qa_chain
+from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferMemory
 from langchain.chat_models import ChatOpenAI
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -54,13 +55,10 @@ def chat(pinecone_index):
 
     def conversational_chat(query):
         llm = ChatOpenAI(model=model_name)
-        docs = db.similarity_search(query)
-        qa = load_qa_chain(llm=llm, chain_type="stuff")
-        # Run the query through the RetrievalQA model
-        result = qa.run(input_documents=docs, question=query) #chain({"question": query, "chat_history": st.session_state['history']})
-        #st.session_state['history'].append((query, result))#["answer"]))
-
-        return result   #["answer"]
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        chat = ConversationalRetrievalChain.from_llm(llm, retriever = retriever, memory = memory)
+        result = chat({"question": query})
+        return result['answer']
 
 
     # Set a default model
