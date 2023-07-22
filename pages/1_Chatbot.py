@@ -42,7 +42,7 @@ embeddings = OpenAIEmbeddings(model = 'text-embedding-ada-002')
 MODEL_OPTIONS = ["gpt-3.5-turbo", "gpt-4"]
 model_name = st.sidebar.selectbox(label="Select Model", options=MODEL_OPTIONS)
 
-pinecone_index = select_index()
+pinecone_index = "demo"#select_index()
 
 def chat(pinecone_index):
 
