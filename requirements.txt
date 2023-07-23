@@ -6,4 +6,4 @@ pypdf
 pinecone-client
 PyPDF2
 pdfplumber
-openpyxl
+duckduckgo-search
