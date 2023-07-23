@@ -1,14 +1,19 @@
 import streamlit as st
 import os
 import time
+import datetime
 import pinecone
 from langchain.vectorstores import Pinecone
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
+from langchain.chains.question_answering import load_qa_chain
 from langchain.chat_models import ChatOpenAI
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-
+from langchain.tools import DuckDuckGoSearchRun
+from langchain.agents import AgentType, initialize_agent, load_tools, Tool
+from langchain.callbacks import StreamlitCallbackHandler
+from langchain.chains import RetrievalQA
+from langchain.memory import ConversationSummaryBufferMemory
+from langchain import OpenAI
 
 # Setting up Streamlit page configuration
 st.set_page_config(
@@ -42,7 +47,7 @@ embeddings = OpenAIEmbeddings(model = 'text-embedding-ada-002')
 MODEL_OPTIONS = ["gpt-3.5-turbo", "gpt-4"]
 model_name = st.sidebar.selectbox(label="Select Model", options=MODEL_OPTIONS)
 
-pinecone_index = "demo"#select_index()
+pinecone_index = select_index()
 
 def chat(pinecone_index):
 
@@ -53,12 +58,37 @@ def chat(pinecone_index):
         db = Pinecone(index, embeddings.embed_query, text_field)
         retriever = db.as_retriever()
 
-    def conversational_chat(query):
-        llm = ChatOpenAI(model=model_name)
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-        chat = ConversationalRetrievalChain.from_llm(llm, retriever = retriever, memory = memory)
-        result = chat({"question": query})
-        return result['answer']
+    def agent_meth():
+        search = DuckDuckGoSearchRun()
+
+        llm = OpenAI(model_name = model_name, streaming=True)
+        doc_retriever = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever, verbose=True)
+        tools = [
+                Tool(
+                    name = "Search",
+                    func = search.run,
+                    description="useful for when you need to answer questions about current events"
+                ),
+                Tool(
+                    name = "Knowledge Base",
+                    func = doc_retriever.run,
+                    description="Always use Knowledge Base more than normal Search tool. Useful for general questions about how to do things and for details on interesting topics. Input should be a fully formed question."
+                )
+            ]
+        memory = ConversationSummaryBufferMemory(llm=llm, max_token_limit=100)
+        agent = initialize_agent(tools, 
+                                llm, 
+                                agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, 
+                                verbose=True, 
+                                handle_parsing_errors=True,
+                                memory = memory
+                            )
+        return agent
+    def retr():
+        llm = ChatOpenAI(model_name = model_name, streaming=True)
+        memory = ConversationSummaryBufferMemory(llm=llm, max_token_limit=100)
+        agent = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=retriever, memory = memory, verbose=True)
+        return agent
 
 
     # Set a default model
@@ -73,34 +103,43 @@ def chat(pinecone_index):
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-
-    # Accept user input
-    if prompt := st.chat_input("Send a message"):
+    #agent = conversational_chat()
+    st.sidebar.write("---")
+    st.sidebar.write("Enable Web Access")
+    meth_sw = st.sidebar.checkbox("Web Search")
+    st.sidebar.write("---")
+    if prompt := st.chat_input():
         # Add user message to chat history
         st.session_state.messages.append({"role": "user", "content":prompt})
+        # st.chat_message("user").write(prompt)
         # Display user message in chat message container
         with st.chat_message("user"):
             st.markdown(prompt)
-        # Display assistant response in chat message container
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
-            output = conversational_chat(prompt)
-            full_response = ""
-            for response in output:
-                full_response += response
-                message_placeholder.markdown(full_response + "|")
-            message_placeholder.markdown(full_response)
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+            st_callback = StreamlitCallbackHandler(st.container())
+            if meth_sw:
+                agent = agent_meth()
+                response = agent.run(prompt, callbacks=[st_callback])
+            else:
+                agent = retr()
+                with st.spinner("Thinking..."):
+                    response = agent.run(prompt)#, callbacks=[st_callback])
+            #st.write(response)
+            message_placeholder.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
 
 if pinecone_index != "":
     chat(pinecone_index)
     #st.sidebar.write(st.session_state.messages)
-    con_check = st.sidebar.checkbox("Check to Upload Conversation to loaded Index")
+    #don_check = st.sidebar.button("Download Conversation")
+    con_check = st.sidebar.button("Upload Conversation to loaded Index")
+    
+    text = []
+    for item in st.session_state.messages:
+        text.append(f"Role: {item['role']}, Content: {item['content']}\n")
+    #st.sidebar.write(text)
     if con_check:
-        text = []
-        for item in st.session_state.messages:
-            text.append(f"Role: {item['role']}, Content: {item['content']}\n")
-        #st.sidebar.write(text)
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=0)
         docs = text_splitter.create_documents(text)
         st.sidebar.info('Initializing Conversation Uploading to DB...')
@@ -110,3 +149,12 @@ if pinecone_index != "":
         
         # Display success message
         st.sidebar.success("Conversation Uploaded Successfully!")
+    
+    text = '\n'.join(text)
+    # Provide download link for text file
+    st.sidebar.download_button(
+        label="Download Conversation",
+        data=text,
+        file_name=f"Conversation_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt",
+        mime="text/plain"
+    )
