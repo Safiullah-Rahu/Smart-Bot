@@ -55,6 +55,18 @@ def load_docs(files):
     # st.write(all_text)
     return all_text  
 
+#param1 = True
+#@st.cache_data
+def select_index():
+    #time.sleep(10)
+    #if param1:
+        #st.sidebar.write("Existing Indexes:👇")
+        #st.sidebar.write(pinecone.list_indexes())
+    pinecone_index_list = pinecone.list_indexes()
+        #pinecone_index = st.sidebar.selectbox(label="Select Index", options=pinecone.list_indexes())
+        #pinecone_index = st.sidebar.text_input("Write Name of Index to load: ")
+    return pinecone_index_list
+
 if 'clicked' not in st.session_state:
     st.session_state.clicked = False
 
@@ -65,16 +77,20 @@ def click_button():
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
 passme = st.sidebar.text_input("Write Password:", type="password")
 if passme == "manageme":
-    # Checkbox for the first option to document upload
-    first_opt = st.checkbox('Create New Index to Upload Documents')
-    # Checkbox for the second option to document upload
-    second_opt = st.checkbox('Use Existing Index to Upload Documents')
-    # Checkbox for the third option to delete existing indexes
-    third_opt = st.checkbox('Delete Any Existing Index')
+    M_OPTIONS = ["Create New Index", "Use Existing Index", "Delete Index"]
+    manage_opts = st.sidebar.selectbox(label="Select Option", options=M_OPTIONS)
+    # # Checkbox for the first option to document upload
+    # first_opt = st.checkbox('Create New Index to Upload Documents')
+    # # Checkbox for the second option to document upload
+    # second_opt = st.checkbox('Use Existing Index to Upload Documents')
+    # # Checkbox for the third option to delete existing indexes
+    # third_opt = st.checkbox('Delete Any Existing Index')
     
-    st.write("---")
+    # st.write("---")
     
-    if first_opt:
+    if manage_opts == "Create New Index":
+        st.header("Create New Index to Upload Documents")
+        st.write("---")
         # Prompt the user to upload PDF/TXT/XLSX files
         st.write("Upload PDF/TXT/XLSX Files:")
         uploaded_files = st.file_uploader("Upload", type=["pdf", "txt", "xlsx"], label_visibility="collapsed", accept_multiple_files = True)
@@ -111,7 +127,12 @@ if passme == "manageme":
                 # Display success message
                 st.success("Document Uploaded Successfully!")
     
-    elif second_opt:
+    elif manage_opts == "Use Existing Index":
+        st.header("Use Existing Index to Upload Documents")
+        st.write("---")
+        pinecone_index_list = select_index()
+        pinecone_index = st.selectbox(label="Select Index", options = pinecone_index_list )
+        #st.write("---")
         # Prompt the user to upload PDF/TXT/XLSX files
         st.write("Upload PDF/TXT/XLSX Files:")
         uploaded_files = st.file_uploader("Upload", type=["pdf", "txt", "xlsx"], label_visibility="collapsed", accept_multiple_files = True)
@@ -130,26 +151,32 @@ if passme == "manageme":
             file_container.write(docs)
     
             time.sleep(10)
-            st.write("Existing Indexes:👇")
-            st.write(pinecone.list_indexes())
-            pinecone_index = st.text_input("Write Name of Existing Index: ")
+            #st.write("Existing Indexes:👇")
+            # pinecone_index_list = select_index(param1)
+            # pinecone_index = st.selectbox(label="Select Index", options = pinecone_index_list )
+            # st.write(pinecone.list_indexes())
+            # pinecone_index = st.text_input("Write Name of Existing Index: ")
             up_check = st.checkbox('Check this to Upload Docs in Selected Index')
             if up_check:
                 st.info('Initializing Document Uploading to DB...')
                 # Upload documents to the Pinecone index
-                time.sleep(40)
+                time.sleep(30)
                 vector_store = Pinecone.from_documents(docs, embeddings, index_name=pinecone_index)
                 
                 # Display success message
                 st.success("Document Uploaded Successfully!")
     
-    elif third_opt:
-        time.sleep(10)
-        st.write("Existing Indexes:👇")
-        st.write(pinecone.list_indexes())
-        pinecone_index = st.text_input("Write Name of Existing Index to delete: ")
+    elif manage_opts == "Delete Index":
+        st.header("Delete Any Existing Index")
+        st.write("---")
+        #time.sleep(10)
+        #st.write("Existing Indexes:👇")
+        pinecone_index_list = select_index()
+        pinecone_index = st.selectbox(label="Select Index", options = pinecone_index_list )
+        #st.write(pinecone.list_indexes())
+        #pinecone_index = st.text_input("Write Name of Existing Index to delete: ")
         st.write(f"The Index named '{pinecone_index}' is selected for deletion.")
-        del_check = st.checkbox('Check this to Delete Index')
+        del_check = st.checkbox('Delete Index')
         if del_check:
             with st.spinner('Deleting Index...'):
                 time.sleep(5)
