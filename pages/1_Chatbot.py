@@ -41,7 +41,7 @@ os.environ["PINECONE_ENV"] = PINECONE_ENV
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
 
 param1 = True
-@st.cache_data
+#@st.cache_data
 def select_index(__embeddings):
     if param1:
         pinecone_index_list = pinecone.list_indexes()
