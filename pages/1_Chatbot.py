@@ -174,7 +174,7 @@ def chat(pinecone_index, query, pt):
     #     memory=memory
                                                 
     # )
-    chat = ChatOpenAI(model_name = model_name streaming=True, callbacks=[stream_handler])
+    chat = ChatOpenAI(model_name = model_name, streaming=True, callbacks=[stream_handler])
     agent = chat([HumanMessage(content=templ)])    
     
         
