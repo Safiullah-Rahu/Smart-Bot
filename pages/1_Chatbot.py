@@ -15,7 +15,7 @@ from langchain.callbacks import get_openai_callback
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.callbacks import StreamlitCallbackHandler
 import base64
-
+from langchain.schema import HumanMessage
 from langchain.callbacks.base import BaseCallbackHandler
 
 # Setting up Streamlit page configuration
@@ -37,25 +37,15 @@ os.environ["PINECONE_ENV"] = PINECONE_ENV
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
 
 
-class StreamDisplayHandler(BaseCallbackHandler):
-    def __init__(self, container, initial_text="", display_method='markdown'):
+class StreamHandler(BaseCallbackHandler):
+    def __init__(self, container, initial_text=""):
         self.container = container
-        self.text = initial_text
-        self.display_method = display_method
-        self.new_sentence = ""
-
+        self.text=initial_text
     def on_llm_new_token(self, token: str, **kwargs) -> None:
-        self.text += token
-        self.new_sentence += token
-
-        display_function = getattr(self.container, self.display_method, None)
-        if display_function is not None:
-            display_function(self.text)
-        else:
-            raise ValueError(f"Invalid display_method: {self.display_method}")
-
-    def on_llm_end(self, response, **kwargs) -> None:
-        self.text=""
+        # "/" is a marker to show difference 
+        # you don't need it 
+        self.text+=token+"/" 
+        self.container.markdown(self.text) 
 
 param1 = True
 @st.cache_data
@@ -102,8 +92,9 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-
-templat = """You are conversational Medical AI and responsible to answer user queries in a conversational manner. 
+chat_history = st.session_state.messages
+question = ""
+templat = f"""You are conversational Medical AI and responsible to answer user queries in a conversational manner. 
 
 You always provide useful information & details available in the given sources with long and detailed answer.
 
@@ -153,10 +144,9 @@ quest_gpt = LLMChain(
 # template = template + pt
 # @st.cache_resource
 
-chat_box = st.empty()
-display_handler = StreamDisplayHandler(
-    chat_box,
-    display_method='write')
+chat_box=st.empty() 
+stream_handler = StreamHandler(chat_box)
+
 
 def chat(pinecone_index, query, pt):
 
@@ -169,7 +159,7 @@ def chat(pinecone_index, query, pt):
     # def agent_meth(query, pt):
 
     quest = quest_gpt.predict(question=query, chat_history=st.session_state.messages)
-
+    question = quest
     web_res = search.run(str(quest))
     doc_res = db.similarity_search(str(quest), k=1)
     result_string = ' '.join(stri.page_content for stri in doc_res)
@@ -177,13 +167,16 @@ def chat(pinecone_index, query, pt):
     contex = "\nSource 1: " + web_res + "\nSource 2: " + result_string + "\nSource 3:" + output +"\nAssistant:" + pt #+ 
     templ = templat + contex
     promptt = PromptTemplate(input_variables=["chat_history", "question"], template=templ)
-    agent = LLMChain(
-        llm=ChatOpenAI(model_name = model_name, streaming=True),
-        prompt=promptt,
-        verbose=True,
-        memory=memory
+    # agent = LLMChain(
+    #     llm=ChatOpenAI(model_name = model_name, streaming=True),
+    #     prompt=promptt,
+    #     verbose=True,
+    #     memory=memory
                                                 
-    )
+    # )
+    chat = ChatOpenAI(model_name = model_name streaming=True, callbacks=[stream_handler])
+    agent = chat([HumanMessage(content=templ)])    
+    
         
     return agent, contex, web_res, result_string, output, quest
     
@@ -204,11 +197,13 @@ if prompt := st.chat_input():
         agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
         st.sidebar.write("standalone question: ", quest)
         with get_openai_callback() as cb:
-            response = agent.predict(question=quest, chat_history = st.session_state.messages, callbacks=[StreamlitCallbackHandler(st.container(),)])
+            response = agent.content#predict(question=quest, chat_history = st.session_state.messages, callbacks=[StreamlitCallbackHandler(st.container(),)])
                                                 #expand_new_thoughts=True, 
                                                 #max_thought_containers=1,
                                                 #collapse_completed_thoughts=True)])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
-            st.write(response)
+            #llm_response = response.content  
+            st.markdown(response)
+            #st.write(response)
             st.session_state.chat_history.append((prompt, response))
             st.session_state.messages.append({"role": "assistant", "content": response})
 
