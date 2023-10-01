@@ -186,11 +186,7 @@ if prompt := st.chat_input():
                                                     #max_thought_containers=1,
                                                     #collapse_completed_thoughts=True)])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
                 #llm_response = response.content
-                for item in response:
-                    full_response += item
-                    message_placeholder.markdown(full_response)
-                message_placeholder.markdown(full_response)
-                #st.markdown(response)
+                st.markdown(response)
                 #st.write(response)
                 st.session_state.chat_history.append((prompt, response))
                 st.session_state.messages.append({"role": "assistant", "content": response})
