@@ -180,7 +180,7 @@ if prompt := st.chat_input():
         with st.spinner("Thinking..."):
             with get_openai_callback() as cb:
                 agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
-                st.sidebar.write("standalone question: ", quest)
+                #st.sidebar.write("standalone question: ", quest)
                 response = agent.predict(question=quest, chat_history = st.session_state.messages)
                                                     #expand_new_thoughts=True, 
                                                     #max_thought_containers=1,
