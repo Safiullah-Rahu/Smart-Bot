@@ -177,15 +177,13 @@ def chat(pinecone_index, query, pt):
     contex = "\nSource 1: " + web_res + "\nSource 2: " + result_string + "\nSource 3:" + output +"\nAssistant:" + pt #+ 
     templ = templat + contex
     promptt = PromptTemplate(input_variables=["chat_history", "question"], template=templ)
-    # agent = LLMChain(
-    #     llm=ChatOpenAI(model_name = model_name, streaming=True),
-    #     prompt=promptt,
-    #     verbose=True,
-    #     memory=memory
+    agent = LLMChain(
+        llm=ChatOpenAI(model_name = model_name, streaming=True),
+        prompt=promptt,
+        verbose=True,
+        memory=memory
                                                 
-    # )
-    llmm=ChatOpenAI(model_name = model_name, streaming=True, callbacks=[display_handler])
-    agent = llmm(templ)
+    )
         
     return agent, contex, web_res, result_string, output, quest
     
@@ -206,7 +204,7 @@ if prompt := st.chat_input():
         agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
         st.sidebar.write("standalone question: ", quest)
         with get_openai_callback() as cb:
-            response = agent.content #.predict(question=quest, chat_history = st.session_state.messages, callbacks=[StreamlitCallbackHandler(st.container(),
+            response = agent.predict(question=quest, chat_history = st.session_state.messages, callbacks=[StreamlitCallbackHandler(st.container(),)])
                                                 #expand_new_thoughts=True, 
                                                 #max_thought_containers=1,
                                                 #collapse_completed_thoughts=True)])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
