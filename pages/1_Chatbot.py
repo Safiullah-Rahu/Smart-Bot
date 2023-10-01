@@ -203,9 +203,9 @@ if prompt := st.chat_input():
         agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
         st.sidebar.write("standalone question: ", quest)
         with get_openai_callback() as cb:
-            response = agent.predict(question=quest, chat_history = st.session_state.messages, callbacks=[display_handler])#,callbacks=[StreamlitCallbackHandler(st.container(),
+            response = agent.predict(question=quest, chat_history = st.session_state.messages, callbacks=[StreamlitCallbackHandler(st.container(),
                                                 #expand_new_thoughts=True, 
-                                                #collapse_completed_thoughts=True)])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
+                                                collapse_completed_thoughts=True)])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
             st.write(response)
             st.session_state.chat_history.append((prompt, response))
             st.session_state.messages.append({"role": "assistant", "content": response})
