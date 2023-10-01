@@ -109,6 +109,8 @@ You always provide useful information & details available in the given sources w
 
 Always consider Chat history while answering in order to remain consistent with user queries.
 
+Never say "As indicated in Source 1, 2, or 3" or "As mentioned in Source 1, 2, or 3" just answer the query.
+
 Chat History:
 {chat_history}
 Follow Up Input: {question}
