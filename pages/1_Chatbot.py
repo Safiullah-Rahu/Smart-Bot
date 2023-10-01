@@ -138,7 +138,7 @@ def chat(pinecone_index, query, pt):
 
     quest = quest_gpt.predict(question=query, chat_history=st.session_state.messages)
 
-    web_res = search.run(quest)
+    web_res = search.run(str(quest))
     doc_res = db.similarity_search(quest, k=1)
     result_string = ' '.join(stri.page_content for stri in doc_res)
     output = chatgpt_chain.predict(human_input=quest)
@@ -171,7 +171,7 @@ if prompt := st.chat_input():
         message_placeholder = st.empty()
         full_response = ""
         st_callback = StreamlitCallbackHandler(st.container(),
-                                                expand_new_thoughts=True, 
+                                                #expand_new_thoughts=True, 
                                                 collapse_completed_thoughts=True)
 
         agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
