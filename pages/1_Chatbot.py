@@ -14,9 +14,7 @@ from langchain.tools import DuckDuckGoSearchRun
 from langchain.callbacks import get_openai_callback
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.callbacks import StreamlitCallbackHandler
-import base64
-from langchain.schema import HumanMessage
-from langchain.callbacks.base import BaseCallbackHandler
+
 
 # Setting up Streamlit page configuration
 st.set_page_config(
@@ -35,17 +33,6 @@ PINECONE_ENV = st.secrets.secrets.PINECONE_ENV
 os.environ["PINECONE_ENV"] = PINECONE_ENV
 # Initialize Pinecone with API key and environment
 pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
-
-
-class StreamHandler(BaseCallbackHandler):
-    def __init__(self, container, initial_text=""):
-        self.container = container
-        self.text=initial_text
-    def on_llm_new_token(self, token: str, **kwargs) -> None:
-        # "/" is a marker to show difference 
-        # you don't need it 
-        self.text+=token+"/" 
-        self.container.markdown(self.text) 
 
 param1 = True
 @st.cache_data
@@ -92,9 +79,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
-chat_history = st.session_state.messages
-question = ""
-templat = f"""You are conversational Medical AI and responsible to answer user queries in a conversational manner. 
+
+templat = """You are conversational Medical AI and responsible to answer user queries in a conversational manner. 
 
 You always provide useful information & details available in the given sources with long and detailed answer.
 
@@ -144,9 +130,6 @@ quest_gpt = LLMChain(
 # template = template + pt
 # @st.cache_resource
 
-chat_box=st.empty() 
-stream_handler = StreamHandler(chat_box)
-
 
 def chat(pinecone_index, query, pt):
 
@@ -167,15 +150,13 @@ def chat(pinecone_index, query, pt):
     contex = "\nSource 1: " + web_res + "\nSource 2: " + result_string + "\nSource 3:" + output +"\nAssistant:" + pt #+ 
     templ = templat + contex
     promptt = PromptTemplate(input_variables=["chat_history", "question"], template=templ)
-    # agent = LLMChain(
-    #     llm=ChatOpenAI(model_name = model_name, streaming=True),
-    #     prompt=promptt,
-    #     verbose=True,
-    #     memory=memory
+    agent = LLMChain(
+        llm=ChatOpenAI(model_name = model_name, streaming=True),
+        prompt=promptt,
+        verbose=True,
+        memory=memory
                                                 
-    # )
-    chat = ChatOpenAI(model_name = model_name, streaming=True, callbacks=[stream_handler])
-    agent = chat([HumanMessage(content=str(templ))])    
+    )  
     
         
     return agent, contex, web_res, result_string, output, quest
@@ -196,16 +177,17 @@ if prompt := st.chat_input():
         full_response = ""
         agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
         st.sidebar.write("standalone question: ", quest)
-        with get_openai_callback() as cb:
-            response = agent.content#predict(question=quest, chat_history = st.session_state.messages, callbacks=[StreamlitCallbackHandler(st.container(),)])
-                                                #expand_new_thoughts=True, 
-                                                #max_thought_containers=1,
-                                                #collapse_completed_thoughts=True)])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
-            #llm_response = response.content  
-            st.markdown(response)
-            #st.write(response)
-            st.session_state.chat_history.append((prompt, response))
-            st.session_state.messages.append({"role": "assistant", "content": response})
+        with st.spinner("Thinking..."):
+            with get_openai_callback() as cb:
+                response = agent.predict(question=quest, chat_history = st.session_state.messages)
+                                                    #expand_new_thoughts=True, 
+                                                    #max_thought_containers=1,
+                                                    #collapse_completed_thoughts=True)])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
+                #llm_response = response.content  
+                st.markdown(response)
+                #st.write(response)
+                st.session_state.chat_history.append((prompt, response))
+                st.session_state.messages.append({"role": "assistant", "content": response})
 
         st.sidebar.header("Total Token Usage:")
         st.sidebar.write(f"""
