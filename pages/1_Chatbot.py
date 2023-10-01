@@ -170,9 +170,9 @@ if prompt := st.chat_input():
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
-        st_callback = StreamlitCallbackHandler(st.container(),) 
-                                            #    expand_new_thoughts=True, 
-                                            #     collapse_completed_thoughts=True)\
+        st_callback = StreamlitCallbackHandler(st.container(),
+                                                expand_new_thoughts=True, 
+                                                collapse_completed_thoughts=True)
 
         agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
         st.sidebar.write("standalone question: ", quest)
