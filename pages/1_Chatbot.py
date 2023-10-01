@@ -142,7 +142,7 @@ def chat(pinecone_index, query, pt):
     # def agent_meth(query, pt):
 
     quest = quest_gpt.predict(question=query, chat_history=st.session_state.messages)
-    question = quest
+
     web_res = search.run(str(quest))
     doc_res = db.similarity_search(str(quest), k=1)
     result_string = ' '.join(stri.page_content for stri in doc_res)
@@ -175,16 +175,21 @@ if prompt := st.chat_input():
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
-        agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
+        
         st.sidebar.write("standalone question: ", quest)
         with st.spinner("Thinking..."):
             with get_openai_callback() as cb:
+                agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
                 response = agent.predict(question=quest, chat_history = st.session_state.messages)
                                                     #expand_new_thoughts=True, 
                                                     #max_thought_containers=1,
                                                     #collapse_completed_thoughts=True)])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
-                #llm_response = response.content  
-                st.markdown(response)
+                #llm_response = response.content
+                for item in response:
+                    full_response += item
+                    message_placeholder.markdown(full_response)
+                message_placeholder.markdown(full_response)
+                #st.markdown(response)
                 #st.write(response)
                 st.session_state.chat_history.append((prompt, response))
                 st.session_state.messages.append({"role": "assistant", "content": response})
