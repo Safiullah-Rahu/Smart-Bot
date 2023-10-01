@@ -184,7 +184,7 @@ def chat(pinecone_index, query, pt):
     #     memory=memory
                                                 
     # )
-    llmm=ChatOpenAI(model_name = model_name, streaming=True, , callbacks=[display_handler])
+    llmm=ChatOpenAI(model_name = model_name, streaming=True, callbacks=[display_handler])
     agent = llmm(templ)
         
     return agent, contex, web_res, result_string, output, quest
