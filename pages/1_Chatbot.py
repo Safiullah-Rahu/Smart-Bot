@@ -15,7 +15,6 @@ from langchain.callbacks import get_openai_callback
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.callbacks import StreamlitCallbackHandler
 
-
 # Setting up Streamlit page configuration
 st.set_page_config(
     layout="centered", 
@@ -86,8 +85,6 @@ You always provide useful information & details available in the given sources w
 
 Always consider Chat history while answering in order to remain consistent with user queries.
 
-Never say "As indicated in Source 1, 2, or 3" or "As mentioned in Source 1, 2, or 3" just answer the query.
-
 Chat History:
 {chat_history}
 Follow Up Input: {question}
@@ -129,8 +126,6 @@ quest_gpt = LLMChain(
 
 # template = template + pt
 # @st.cache_resource
-
-
 def chat(pinecone_index, query, pt):
 
     db = ret(pinecone_index)
@@ -143,21 +138,21 @@ def chat(pinecone_index, query, pt):
 
     quest = quest_gpt.predict(question=query, chat_history=st.session_state.messages)
 
-    web_res = search.run(str(quest))
-    doc_res = db.similarity_search(str(quest), k=1)
+    web_res = search.run(quest)
+    doc_res = db.similarity_search(quest, k=1)
     result_string = ' '.join(stri.page_content for stri in doc_res)
     output = chatgpt_chain.predict(human_input=quest)
     contex = "\nSource 1: " + web_res + "\nSource 2: " + result_string + "\nSource 3:" + output +"\nAssistant:" + pt #+ 
     templ = templat + contex
     promptt = PromptTemplate(input_variables=["chat_history", "question"], template=templ)
     agent = LLMChain(
-        llm=ChatOpenAI(model_name = model_name, streaming=True),
+        llm=ChatOpenAI(model_name = model_name, streaming=True, temperature=0),
         prompt=promptt,
         verbose=True,
         memory=memory
                                                 
-    )  
-    
+    )
+        
         
     return agent, contex, web_res, result_string, output, quest
     
@@ -175,19 +170,16 @@ if prompt := st.chat_input():
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
-        
-        
+        # st_callback = StreamlitCallbackHandler(st.container(),
+        #                                     #    expand_new_thoughts=True, 
+        #                                     collapse_completed_thoughts=True)
+
+        agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
+        st.sidebar.write("New created question: ", quest)
         with st.spinner("Thinking..."):
             with get_openai_callback() as cb:
-                agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
-                #st.sidebar.write("standalone question: ", quest)
-                response = agent.predict(question=quest, chat_history = st.session_state.messages)
-                                                    #expand_new_thoughts=True, 
-                                                    #max_thought_containers=1,
-                                                    #collapse_completed_thoughts=True)])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
-                #llm_response = response.content
-                st.markdown(response)
-                #st.write(response)
+                response = agent.predict(question=quest, chat_history = st.session_state.messages)#,callbacks=[st_callback])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
+                st.write(response)
                 st.session_state.chat_history.append((prompt, response))
                 st.session_state.messages.append({"role": "assistant", "content": response})
 
@@ -235,3 +227,5 @@ if pinecone_index != "":
         file_name=f"Conversation_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.txt",
         mime="text/plain"
     )
+
+
