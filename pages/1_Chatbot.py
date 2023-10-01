@@ -175,7 +175,7 @@ if prompt := st.chat_input():
         #                                     collapse_completed_thoughts=True)
 
         agent, contex, web_res, result_string, output, quest = chat(pinecone_index, prompt, pt)
-        st.sidebar.write("New created question: ", quest)
+        #st.sidebar.write("New created question: ", quest)
         with st.spinner("Thinking..."):
             with get_openai_callback() as cb:
                 response = agent.predict(question=quest, chat_history = st.session_state.messages)#,callbacks=[st_callback])#, callbacks=[st_callback])#.run(prompt, callbacks=[st_callback])
